@@ -76,37 +76,77 @@ class BeastDF(TcpClient):
             if len(msg) != 28 or pms.crc(msg) != 0:
                 continue
 
-            pms.bds.infer(msg, mrar=True)
+            df = pms.df(msg)
 
-            # 3) seed your record
+            # pms.bds.infer(msg, mrar=True)
+
             rec = {
+                'datetime_utc': pd.to_datetime(ts, unit='s', utc=True),
                 'timestamp': ts,
-                'df':        pms.df(msg),
-                'icao':      pms.adsb.icao(msg),
+                'df': df,
+                'icao': pms.icao(msg),
             }
 
-            # 4) run through each BDS-flag module
-            for bds_name, module in BDS_FLAGS.items():
-                # each module has an isXX() method
-                fn = getattr(module, f"is{bds_name[3:]}")
-                rec[f"is{bds_name[3:]}"] = fn(msg)
+            # Track even/odd messages for position decoding
+            self.position_cache = {}  # {"icao": {'even': (msg, ts), 'odd': (msg, ts)}}
 
-            # 5) run through each Comm-B weather/capability function
-            for key, _func in COMMB_FUNCS.items():
-                try:
-                    rec[key] = _func(msg)
-                except Exception:
-                    rec[key] = None
+            # Process ADS-B messages (DF 17/18)
+            if df in [17, 18]:
+                tc = pms.adsb.typecode(msg)
+                rec['typecode'] = tc
 
-            for fname, func in adfb_funcs.items():
-                try:
-                    val = func(msg)
-                    if val is not None and val != (None, None):
-                        rec[fname] = val
-                except Exception:
-                    continue
+                # Decode based on typecode
+                for fname, func in adfb_funcs.items():
+                    try:
+                        val = func(msg)
+                        if val is not None and val != (None, None):
+                            rec[fname] = val
+                    except:
+                        continue
 
-            # 6) append for DataFrame later
+                if tc in range(9, 19):  # Position messages
+                    oe_flag = pms.adsb.oe_flag(msg)
+
+                    if "icao" not in self.position_cache:
+                        self.position_cache["icao"] = {}
+
+                    if oe_flag == 0:
+                        self.position_cache["icao"]['even'] = (msg, ts)
+                    else:
+                        self.position_cache["icao"]['odd'] = (msg, ts)
+
+                    # Try to decode position if we have both
+                    if 'even' in self.position_cache["icao"] and 'odd' in self.position_cache["icao"]:
+                        even_msg, even_ts = self.position_cache["icao"]['even']
+                        odd_msg, odd_ts = self.position_cache["icao"]['odd']
+
+                        # Only decode if messages are recent (within 10 seconds)
+                        if abs(even_ts - odd_ts) < 10:
+                            try:
+                                lat, lon = pms.adsb.position(even_msg, odd_msg, even_ts, odd_ts)
+                                rec['latitude'] = lat
+                                rec['longitude'] = lon
+                            except:
+                                pass
+
+            # Process Comm-B messages (DF 20/21)
+            elif df in [20, 21]:
+                # Infer BDS code with MRAR support
+                bds_code = pms.bds.infer(msg, mrar=True)
+                rec['bds'] = bds_code
+
+                # Check all BDS flags
+                for bds_name, module in BDS_FLAGS.items():
+                    fn = getattr(module, f"is{bds_name[3:]}")
+                    rec[f"is{bds_name[3:]}"] = fn(msg)
+
+                # Decode Comm-B functions
+                for key, func in COMMB_FUNCS.items():
+                    try:
+                        rec[key] = func(msg)
+                    except:
+                        rec[key] = None
+
             self.records.append(rec)
 
 if __name__ == "__main__":
@@ -126,23 +166,12 @@ if __name__ == "__main__":
     finally:
         signal.alarm(0)    # cancel any pending alarm
 
-    df = pd.DataFrame(client.records)
-
-    round_time_column = False
-    if round_time_column == True:
-        df['datetime_utc'] = (
-            pd.to_datetime(df['timestamp'], unit='s', utc=True))
-
-    # Leaving index as unique identifier
-    # df = df.set_index('datetime_utc')
-
-    # Group by aircraft identifier (ICAO, column 'icao'), secondly by timestamp
-    df = df.groupby('icao').apply(
-        lambda x: x.set_index('datetime_utc').sort_index()
-    ).reset_index(level=0, drop=True)
+    data_df = pd.DataFrame(client.records)
+    data_df['datetime_utc'] = pd.to_datetime(data_df['timestamp'], unit='s', utc=True)
+    data_df = data_df.set_index(['icao', 'datetime_utc']).sort_index()
 
     # Save this to disc as a CSV file
-    df.to_csv('adsb_data2.csv', index=True)
+    data_df.to_csv('adsb_data2.csv', index=True)
 
     # print(df)
 
