@@ -76,7 +76,6 @@ class BeastDF(TcpClient):
             if len(msg) != 28 or pms.crc(msg) != 0:
                 continue
 
-            # 2) SINGLE infer call with MRAR ON:
             pms.bds.infer(msg, mrar=True)
 
             # 3) seed your record
@@ -117,27 +116,33 @@ if __name__ == "__main__":
 
     # hook up the alarm
     signal.signal(signal.SIGALRM, _alarm_handler)
-    signal.alarm(5)
+    n_sec = 15
+    signal.alarm(n_sec)
 
     try:
         client.run()
     except TimeoutException:
-        print("\n→ 5 seconds elapsed, stopping capture…")
+        print(f"\n→ {n_sec} seconds elapsed, stopping capture.")
     finally:
         signal.alarm(0)    # cancel any pending alarm
 
     df = pd.DataFrame(client.records)
 
-    # convert the 'timestamp' column to timezone-aware datetime rounded to nearest second
-    # We'll preserve "timestamp" as a column in case we need precise timing for, e.g., wind calculations.
-    df['datetime_utc'] = (
-        pd.to_datetime(df['timestamp'], unit='s', utc=True)
-        .dt.round('s')
-    )
-    df = df.set_index('datetime_utc')
+    round_time_column = False
+    if round_time_column == True:
+        df['datetime_utc'] = (
+            pd.to_datetime(df['timestamp'], unit='s', utc=True))
+
+    # Leaving index as unique identifier
+    # df = df.set_index('datetime_utc')
+
+    # Group by aircraft identifier (ICAO, column 'icao'), secondly by timestamp
+    df = df.groupby('icao').apply(
+        lambda x: x.set_index('datetime_utc').sort_index()
+    ).reset_index(level=0, drop=True)
 
     # Save this to disc as a CSV file
-    df.to_csv('adsb_data.csv', index=True)
+    df.to_csv('adsb_data2.csv', index=True)
 
     # print(df)
 
