@@ -64,6 +64,9 @@ class BeastDF(TcpClient):
         super().__init__(host, port, 'beast')
         self.records = []
 
+        # Track even/odd messages for position decoding
+        self.position_cache = {}  # {"icao": {'even': (msg, ts), 'odd': (msg, ts)}}
+
     def handle_messages(self, messages):
         for raw_bytes, ts in messages:
             # hex-string guard
@@ -87,8 +90,7 @@ class BeastDF(TcpClient):
                 'icao': pms.icao(msg),
             }
 
-            # Track even/odd messages for position decoding
-            self.position_cache = {}  # {"icao": {'even': (msg, ts), 'odd': (msg, ts)}}
+
 
             # Process ADS-B messages (DF 17/18)
             if df in [17, 18]:
@@ -107,18 +109,19 @@ class BeastDF(TcpClient):
                 if tc in range(9, 19):  # Position messages
                     oe_flag = pms.adsb.oe_flag(msg)
 
-                    if "icao" not in self.position_cache:
-                        self.position_cache["icao"] = {}
+                    icao = pms.icao(msg)
+                    if icao not in self.position_cache:
+                        self.position_cache[icao] = {}
 
                     if oe_flag == 0:
-                        self.position_cache["icao"]['even'] = (msg, ts)
+                        self.position_cache[icao]['even'] = (msg, ts)
                     else:
-                        self.position_cache["icao"]['odd'] = (msg, ts)
+                        self.position_cache[icao]['odd'] = (msg, ts)
 
                     # Try to decode position if we have both
-                    if 'even' in self.position_cache["icao"] and 'odd' in self.position_cache["icao"]:
-                        even_msg, even_ts = self.position_cache["icao"]['even']
-                        odd_msg, odd_ts = self.position_cache["icao"]['odd']
+                    if 'even' in self.position_cache[icao] and 'odd' in self.position_cache[icao]:
+                        even_msg, even_ts = self.position_cache[icao]['even']
+                        odd_msg, odd_ts = self.position_cache[icao]['odd']
 
                         # Only decode if messages are recent (within 10 seconds)
                         if abs(even_ts - odd_ts) < 10:
