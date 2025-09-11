@@ -325,7 +325,7 @@ if __name__ == "__main__":
         data_df = data_df.set_index(['icao', 'datetime_utc']).sort_index()
         
         # Save to CSV
-        data_df.to_csv('adsb_data_improved.csv', index=True)
+        data_df.to_csv('example_output_sept2025.csv', index=True)
         
         print(f"\nTotal records: {len(data_df)}")
         print(f"Unique aircraft: {data_df.index.get_level_values('icao').nunique()}")
