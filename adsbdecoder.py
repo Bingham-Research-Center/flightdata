@@ -1,12 +1,11 @@
+import hashlib
 import signal
-import inspect
-import time
 from collections import defaultdict
+from datetime import datetime, timezone
 
 import pyModeS as pms
 from pyModeS.extra.tcpclient import TcpClient
-import pandas as pd
-import numpy as np
+import polars as pl
 
 class TimeoutException(Exception):
     pass
@@ -118,6 +117,79 @@ COMMB_FUNCS = {
     'vr60_ins': pms.commb.vr60ins,
 }
 
+TUPLE_FIELD_MAP = {
+    'velocity': ('velocity_gs', 'velocity_track', 'velocity_vr', 'velocity_type'),
+    'speed_heading': ('spdhdg_speed', 'spdhdg_heading'),
+    'airborne_velocity': ('airborne_speed', 'airborne_heading', 'airborne_vr', 'airborne_type'),
+    'selected_altitude': ('selected_altitude_ft', 'selected_altitude_src'),
+    'wind44': ('wind44_speed', 'wind44_dir'),
+    'temp44': ('temp44_c',),
+    'p44': ('p44_hpa',),
+    'hum44': ('hum44_pct',),
+    'temp45': ('temp45_c',),
+    'p45': ('p45_hpa',),
+    'rh45': ('rh45_pct',),
+}
+
+STEP_QUANTIZATION = [
+    (('altitude', 'selected_altitude_ft', 'altitude_diff'), 25.0),
+    (('vr', 'vertical_rate'), 10.0),
+]
+
+DECIMAL_QUANTIZATION = [
+    (('latitude', 'longitude'), 4),
+    (('heading', 'track', 'dir'), 1),
+    (('speed', 'gs', 'tas', 'ias'), 1),
+    (('roll',), 1),
+    (('mach',), 3),
+    (('temp',), 1),
+    (('pressure', 'p44_hpa', 'p45_hpa', 'baro_pressure_setting'), 1),
+    (('hum', 'rh'), 0),
+]
+
+def _to_datetime(ts):
+    return datetime.fromtimestamp(ts, tz=timezone.utc)
+
+def _flatten_record(rec):
+    flat = {}
+    for key, val in rec.items():
+        if isinstance(val, (tuple, list)):
+            names = TUPLE_FIELD_MAP.get(key)
+            if names:
+                for idx, name in enumerate(names):
+                    if idx < len(val):
+                        flat[name] = val[idx]
+                if len(val) > len(names):
+                    for idx in range(len(names), len(val)):
+                        flat[f"{key}_{idx}"] = val[idx]
+            else:
+                for idx, item in enumerate(val):
+                    flat[f"{key}_{idx}"] = item
+        else:
+            flat[key] = val
+    return flat
+
+def _apply_quantization(df):
+    exprs = []
+    for col, dtype in df.schema.items():
+        if not pl.datatypes.is_numeric(dtype):
+            continue
+        applied = False
+        for substrings, step in STEP_QUANTIZATION:
+            if any(sub in col for sub in substrings):
+                exprs.append(((pl.col(col) / step).round(0) * step).alias(col))
+                applied = True
+                break
+        if applied:
+            continue
+        for substrings, decimals in DECIMAL_QUANTIZATION:
+            if any(sub in col for sub in substrings):
+                exprs.append(pl.col(col).round(decimals).alias(col))
+                break
+    if exprs:
+        df = df.with_columns(exprs)
+    return df
+
 class BeastDF(TcpClient):
     def __init__(self, host, port, ref_lat=None, ref_lon=None):
         super().__init__(host, port, 'beast')
@@ -155,8 +227,9 @@ class BeastDF(TcpClient):
             # Base record
             rec = {
                 'timestamp': ts,
-                'datetime_utc': pd.to_datetime(ts, unit='s', utc=True),
+                'datetime_utc': _to_datetime(ts),
                 'msg': msg,  # Store raw message
+                'msg_hash': hashlib.blake2s(msg.encode('utf-8'), digest_size=8).hexdigest(),
                 'df': df,
                 'icao': icao,
             }
@@ -318,18 +391,59 @@ if __name__ == "__main__":
         print(f"  {k}: {v}")
     
     # Create DataFrame
-    data_df = pd.DataFrame(client.records)
+    records = [_flatten_record(rec) for rec in client.records]
+    data_df = pl.DataFrame(records)
     
-    if not data_df.empty:
-        # Set multi-index
-        data_df = data_df.set_index(['icao', 'datetime_utc']).sort_index()
+    if data_df.height > 0:
+        sort_cols = [c for c in ['icao', 'datetime_utc'] if c in data_df.columns]
+        if sort_cols:
+            data_df = data_df.sort(sort_cols)
+
+        data_df = _apply_quantization(data_df)
         
-        # Save to CSV
-        data_df.to_csv('example_output_sept2025.csv', index=True)
+        core_cols = [
+            'timestamp',
+            'datetime_utc',
+            'icao',
+            'df',
+            'typecode',
+            'msg_hash',
+            'latitude',
+            'longitude',
+            'position_type',
+            'altitude',
+            'selected_altitude_ft',
+            'velocity_gs',
+            'velocity_track',
+            'velocity_vr',
+            'velocity_type',
+            'airborne_speed',
+            'airborne_heading',
+            'airborne_vr',
+            'airborne_type',
+            'spdhdg_speed',
+            'spdhdg_heading',
+            'baro_pressure_setting',
+            'callsign',
+            'category',
+        ]
+        core_cols = [c for c in core_cols if c in data_df.columns]
+        key_cols = [c for c in ['timestamp', 'datetime_utc', 'icao', 'msg_hash'] if c in data_df.columns]
+
+        core_df = data_df.select(core_cols) if core_cols else data_df
+        derived_cols = [c for c in data_df.columns if c not in set(core_cols)]
+        derived_df = data_df.select(key_cols + derived_cols) if derived_cols else data_df.select(key_cols)
+
+        # Save to Parquet (core + derived)
+        core_df.write_parquet('adsb_core.parquet', compression='zstd')
+        derived_df.write_parquet('adsb_derived.parquet', compression='zstd')
         
-        print(f"\nTotal records: {len(data_df)}")
-        print(f"Unique aircraft: {data_df.index.get_level_values('icao').nunique()}")
+        total_records = data_df.height
+        unique_aircraft = data_df.select(pl.col('icao').n_unique()).item() if 'icao' in data_df.columns else 0
+        print(f"\nTotal records: {total_records}")
+        print(f"Unique aircraft: {unique_aircraft}")
         
         # Show position success rate
-        pos_success = data_df['latitude'].notna().sum()
-        print(f"Successful position decodes: {pos_success}/{len(data_df)} ({pos_success/len(data_df)*100:.1f}%)")
+        if 'latitude' in data_df.columns:
+            pos_success = data_df.select(pl.col('latitude').is_not_null().sum()).item()
+            print(f"Successful position decodes: {pos_success}/{total_records} ({pos_success/total_records*100:.1f}%)")
