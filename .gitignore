@@ -2,3 +2,6 @@ __pycache__/
 tools/__pycache__/
 *.pyc
 .ipynb_checkpoints/
+.DS_Store
+.idea/*
+!.idea/.gitignore
