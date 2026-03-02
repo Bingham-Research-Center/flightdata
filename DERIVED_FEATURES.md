@@ -78,7 +78,7 @@
 - **Derived columns**: wind components, stability metrics, turbulence proxies, quality flags.
 - **Do not duplicate**: keep only one of (ground vs. air) as source fields; store derived deltas instead.
 - **Row identity**: keep `msg` or `msg_hash` during exploration; drop only after dedup is robust.
-- **Outputs**: a “core” Parquet plus a “derived” Parquet joined by `(icao, timestamp)`.
+- **Outputs**: a “core” Parquet plus a “derived” Parquet joined by `(icao, timestamp, msg_hash)`.
 
 ## Experiment Phases
 1) **Inventory**: quantify availability of Comm‑B and key fields.  
