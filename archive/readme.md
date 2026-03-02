@@ -2,11 +2,11 @@
 # ADS-B & Mode S Meteorological Decoder
 
 This project decodes and processes ADS-B (DF17/18), Mode S Comm-B (DF20/21), and legacy Mode A/C (DF4/5) messages using [pyModeS](https://github.com/junzis/pyModeS).
-It outputs three CSVs:
+It outputs three Parquet files:
 
-- **decoded_messages.csv**: Raw and cleaned fields, typed and split (no tuples), reduced precision.
-- **derived_data.csv**: Message-level derived meteorological variables (wind, ISA deviation, etc.).
-- **aggregated_summary.csv**: One-row-per-aircraft statistical summaries.
+- **decoded_messages.parquet**: Raw and cleaned fields, typed and split (no tuples), reduced precision.
+- **derived_data.parquet**: Message-level derived meteorological variables (wind, ISA deviation, etc.).
+- **aggregated_summary.parquet**: One-row-per-aircraft statistical summaries.
 
 ## Installation
 

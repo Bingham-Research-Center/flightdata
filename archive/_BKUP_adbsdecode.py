@@ -173,8 +173,7 @@ if __name__ == "__main__":
     data_df['datetime_utc'] = pd.to_datetime(data_df['timestamp'], unit='s', utc=True)
     data_df = data_df.set_index(['icao', 'datetime_utc']).sort_index()
 
-    # Save this to disc as a CSV file
-    data_df.to_csv('adsb_data2.csv', index=True)
+    # Save this to disk as a Parquet file
+    data_df.to_parquet('adsb_data2.parquet', index=True)
 
     # print(df)
-

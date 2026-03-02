@@ -10,7 +10,7 @@ def summarize_file(path: Path) -> None:
         return
 
     scan = pl.scan_parquet(path)
-    cols = scan.columns
+    cols = scan.collect_schema().names()
 
     row_count = scan.select(pl.len().alias("rows")).collect().item()
     col_count = len(cols)

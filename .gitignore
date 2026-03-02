@@ -5,3 +5,7 @@ tools/__pycache__/
 .DS_Store
 .idea/*
 !.idea/.gitignore
+adsb_core*.parquet
+adsb_derived*.parquet
+!example_*_core.parquet
+!example_*_derived.parquet

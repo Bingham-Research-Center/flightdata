@@ -2,7 +2,8 @@
 
 ## Project Structure & Module Organization
 - `adsbdecoder.py` is the primary ADS-B decoding script and entry point.
-- `example_output.csv` is a sample output file; the script currently writes `adsb_core.parquet` and `adsb_derived.parquet` in the repo root.
+- `example_2026-03-02_60s_core.parquet` and `example_2026-03-02_60s_derived.parquet` are in-repo sample data files.
+- The script writes `adsb_core.parquet` and `adsb_derived.parquet` in the repo root.
 - `DERIVED_FEATURES.md` documents the scientific feature roadmap and hypotheses.
 - `units.md` is the column → unit mapping table.
 
@@ -19,7 +20,7 @@
 ## Testing Guidelines
 - No automated test suite exists yet.
 - Manual validation: run `python adsbdecoder.py` and confirm a non-empty Parquet file plus reasonable summary stats in stdout.
-- If you change output fields, update `example_output.csv` or note the change in your PR.
+- If you change output fields, update the sample parquet snapshot files or note the change in your PR.
 - Keep `units.md` in sync with any schema or derived‑feature changes.
 
 ## Commit & Pull Request Guidelines

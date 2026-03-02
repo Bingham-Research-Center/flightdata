@@ -11,7 +11,8 @@ This project tests whether aircraft broadcasts can add useful time-height inform
 ## Quick links
 - Project home: https://github.com/Bingham-Research-Center/flightdata
 - Data-play notebook: `notebooks/uinta_basin_proof_of_concept.ipynb`
-- Sample data file: https://github.com/Bingham-Research-Center/flightdata/blob/main/example_output.csv
+- Data guide: `DATA_PLAYBOOK.md`
+- Parquet sample snapshot: `example_2026-03-02_60s_core.parquet` + `example_2026-03-02_60s_derived.parquet`
 - Feature roadmap: `DERIVED_FEATURES.md`
 - Units map: `units.md`
 
@@ -28,8 +29,9 @@ This is enough to justify follow-on work: we have real data, real coverage, and 
 - The decoder writes:
   - `adsb_core.parquet`
   - `adsb_derived.parquet`
-- A sample file is in-repo for off-site exploration:
-  - `example_output.csv`
+- A compact 60-second real-capture snapshot is also in-repo:
+  - `example_2026-03-02_60s_core.parquet`
+  - `example_2026-03-02_60s_derived.parquet`
 
 ## One-command capture length control
 Set capture duration directly:
@@ -40,10 +42,15 @@ Other useful options:
 
 `python adsbdecoder.py --host 129.123.91.145 --port 30005 --seconds 120 --core-out adsb_core.parquet --derived-out adsb_derived.parquet`
 
+## Make a collaborator snapshot
+To package a capture into smaller shareable files (derived output drops raw `msg` by default):
+
+`python tools/make_collab_snapshot.py --core-in adsb_core.parquet --derived-in adsb_derived.parquet --prefix example_YYYY-MM-DD_60s`
+
 ## Notebook workflow
 The notebook (`notebooks/uinta_basin_proof_of_concept.ipynb`) will:
 - Load local real captures when available.
-- Fall back to `example_output.csv` when local parquet files are absent.
+- Fall back to in-repo sample parquet files when local capture files are absent.
 - Produce plain tables/plots for:
   - Field availability inventory.
   - Message-type mix.
@@ -93,9 +100,9 @@ Summarize parquet:
 
 `python tools/summary.py`
 
-Convert sample CSV to parquet if needed:
+Create compact collaborator snapshot files from a capture:
 
-`python tools/import_csv.py example_output.csv`
+`python tools/make_collab_snapshot.py --core-in adsb_core.parquet --derived-in adsb_derived.parquet --prefix example_YYYY-MM-DD_60s`
 
 ## AI use transparency
 AI is used heavily during prototyping and brainstorming in this phase.

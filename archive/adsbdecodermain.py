@@ -5,10 +5,10 @@ Full ADS-B & Mode S Meteorological Decoder
 
 Decodes ADS-B (DF17/18), Mode S Comm-B (DF20/21), and legacy Mode A/C (DF4/5) messages via pyModeS.
 Extracts raw fields, splits tuple outputs into typed columns, removes redundancies, and computes derived meteorological variables.
-Produces three CSVs:
-  - decoded_messages.csv
-  - derived_data.csv
-  - aggregated_summary.csv
+Produces three Parquet files:
+  - decoded_messages.parquet
+  - derived_data.parquet
+  - aggregated_summary.parquet
 
 Usage:
   python adsbdecodermain.py --host <RECEIVER_HOST> --port <RECEIVER_PORT> --duration <SECONDS>
@@ -37,7 +37,7 @@ def receive_messages(host: str, port: int, duration: float):
                 continue
             # try:
             line = raw.decode('ascii', 'ignore').strip()
-            print(f"PARSED LINE: {line}")     # check your CSV/SBS format
+            print(f"PARSED LINE: {line}")     # check your SBS text format
             msg = line.split(',')[-1]
             print(f"MSG: {msg} (len={len(msg)})")  # confirm length before decode_record
             yield msg, time.time()
@@ -306,9 +306,9 @@ def main():
     df_derived = derive_dataframe(df_clean)
     df_summary = aggregate_summary(df_clean, df_derived)
 
-    df_clean.to_csv('decoded_messages.csv', index=False)
-    df_derived.to_csv('derived_data.csv', index=False)
-    df_summary.to_csv('aggregated_summary.csv', index=False)
+    df_clean.to_parquet('decoded_messages.parquet', index=False)
+    df_derived.to_parquet('derived_data.parquet', index=False)
+    df_summary.to_parquet('aggregated_summary.parquet', index=False)
 
 
 if __name__ == '__main__':

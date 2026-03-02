@@ -45,7 +45,7 @@ Updated `DERIVED_FEATURES.md` join key reference:
 Added `notebooks/uinta_basin_proof_of_concept.ipynb`.
 Notebook behavior:
 - Loads local real captures (`adsb_core.parquet`, `adsb_derived.parquet`) when present.
-- Falls back to `example_output.csv` when local captures are absent.
+- Falls back to in-repo sample parquet files when local captures are absent.
 - Provides quick plots/tables for:
   - Field availability inventory
   - Message mix
@@ -101,11 +101,11 @@ Interpretation:
 - Current runtime likely cannot access the local receiver stream path.
 - Next validation must be run on a machine with confirmed local stream reachability.
 
-## Quick Evidence From Existing Sample (`example_output.csv`)
+## Quick Evidence From Existing Sample (`example_2026-03-02_60s_core.parquet`)
 From a quick inventory run:
-- Rows: 2694
-- Unique aircraft (`icao`): 50
-- Position non-null rate (`latitude`/`longitude`): 66.96%
+- Rows: 13252
+- Unique aircraft (`icao`): 72
+- Position non-null rate (`latitude`/`longitude`): 69.8%
 - Message family in sample: DF17 only
 
 Interpretation:
@@ -146,6 +146,20 @@ Current narrative is now in place for collaborators:
 - Current evidence demonstrates real, decodable aircraft observations.
 - Near-term work focuses on field availability inventory and defensible first derived quantities.
 - UAT and possible second receiver (Roosevelt-side geometry) are explicit expansion pathways.
+
+## Post-Handoff Local Validation Update (March 2, 2026)
+Follow-up run from this machine confirmed the live path works when network access is enabled:
+- Command: `python adsbdecoder.py --seconds 60 --core-out adsb_core_60s.parquet --derived-out adsb_derived_60s.parquet`
+- Total records: 13,252
+- Unique aircraft: 72
+- Successful position decodes: 9,252 / 13,252 (69.8%)
+- Message counts included: `df17` with `tc11`, `tc19`, `tc28`, `tc29`, `tc31`
+
+Compact collaborator files were produced from this run:
+- `example_2026-03-02_60s_core.parquet`
+- `example_2026-03-02_60s_derived.parquet`
+
+Quantization sanity checks confirmed expected rounding/step behavior (residual = 0 for tested core fields), and resulting files are compact enough for repository sharing.
 
 ## Date Stamp
 - Handoff date: March 2, 2026 (UTC)
