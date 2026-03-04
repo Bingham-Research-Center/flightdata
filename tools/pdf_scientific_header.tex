@@ -1,0 +1,31 @@
+% Scientific-style PDF header for markdown->PDF rendering with pandoc + xelatex
+\usepackage[margin=1.2in]{geometry}
+\usepackage{setspace}
+\setstretch{1.13}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+
+\usepackage{xcolor}
+\definecolor{AccentPurple}{HTML}{5E3A9E}
+
+\usepackage{XCharter}
+
+\usepackage{sectsty}
+\sectionfont{\color{AccentPurple}}
+\subsectionfont{\color{AccentPurple}}
+\subsubsectionfont{\color{AccentPurple}}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.2pt}
+\fancyhead[L]{\textcolor{AccentPurple}{\small Scientific Briefing Draft}}
+\fancyhead[R]{\small \thepage}
+
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=AccentPurple,
+  urlcolor=AccentPurple,
+  citecolor=AccentPurple
+}
