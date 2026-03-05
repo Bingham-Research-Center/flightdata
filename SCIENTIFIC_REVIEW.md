@@ -81,16 +81,27 @@ What must be demonstrated before stronger claims:
 
 Priority order is highest urgency first. Collaborators can append rows using this same format.
 
-| Priority | Extension | Why now | Done if |
-|---|---|---|---|
-| 1 | Low-level sufficiency audit | No low-level evidence yet. | Counts by altitude, distance, and hour, plus pass/fail call. |
-| 2 | Comm-B yield audit | Met/hazard yield is zero in sample. | Non-null rates for BDS 4,4 / 4,5 / 5,0 / 6,0. |
-| 3 | KVEL targeted pilot (1-2 weeks) | Need real low-level hit rates. | Daily and window-level hit-rate summary with schedule advice. |
-| 4 | Terrain-relative altitude proxy | MSL alone is weak in basin terrain. | Added proxy field with refreshed low-level maps/histograms. |
-| 5 | Indicator false-positive test | Avoid noisy overclaims. | Trigger rates on control periods and keep/drop decisions. |
-| 6 | One external validation case | Needed for scientific trust. | One aligned event brief versus station/reanalysis data. |
-| 7 | Receiver-geometry limits memo | Blind spots may dominate conclusions. | Footprint map and short missing-zone note. |
-| 8 | Open collaborator row policy | Prevents scope drift. | New rows include owner, date, and decision criterion. |
+| Pri | Extension | Output gate |
+|---|---|---|
+| 1 | Low-level sufficiency audit | Altitude-distance-hour counts with pass/fail call |
+| 2 | Comm-B yield audit | Non-null rates for BDS 4,4 / 4,5 / 5,0 / 6,0 |
+| 3 | KVEL targeted pilot (1-2 weeks) | Daily window hit-rate summary and schedule recommendation |
+| 4 | Terrain-relative altitude proxy | Added proxy field plus refreshed low-level plots |
+| 5 | False-positive check | Control-period trigger rates and keep/drop decision |
+| 6 | External validation case | One aligned event brief versus reference data |
+| 7 | Geometry limits memo | Footprint map and missing-zone summary |
+| 8 | Open collaborator row policy | New rows include owner/date/decision rule |
+
+Task notes:
+
+1. If rows below roughly 7,000-9,000 ft MSL stay sparse near KVEL distances, pivot to sampling/geometry work first.
+2. Treat Comm-B meteorology as measured yield, not assumed capability.
+3. Capture windows should include local arrival/departure peaks and overnight cold-pool hours.
+4. Keep AGL-proxy method transparent; document assumptions and terrain source.
+5. Use control days explicitly to prevent optimistic indicator drift.
+6. Include uncertainty bounds in validation figures, not only a visual match.
+7. Use the geometry memo to prioritize receiver placement before scaling feature work.
+8. Keep row updates brief so collaborators can scan and act quickly.
 
 Execution rule for every row: include one concrete artifact (table/figure), then one short finding statement: supported, not supported, or inconclusive.
 
