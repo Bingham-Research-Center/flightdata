@@ -38,7 +38,7 @@ def main() -> None:
         "--pdf-engine=xelatex",
         f"--include-in-header={header.resolve()}",
         "-V",
-        "fontsize=11pt",
+        "fontsize=10pt",
     ]
 
     pypandoc.convert_file(
