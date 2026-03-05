@@ -1,91 +1,52 @@
-# Flightdata: Uinta Basin Aircraft Signals for Weather Research
+# Flightdata: ADS-B for Uinta Basin Cold-Pool Research
 
-## Why this exists
-The Uinta Basin has sparse in-situ atmospheric observations for some key questions, especially winter cold pools and low-level stability changes.
-This project tests whether aircraft broadcasts can add useful time-height information to reduce uncertainty in those conditions.
+## Project Purpose
 
-## Who this README is for
-- Primary: collaborators (current and future) who need a plain-language project map.
-- Secondary: proposal-oriented readers who need to see why this is fundable and technically credible.
+This repo is not a standard ADS-B tracking project.  
+It tests whether aircraft broadcasts can add useful atmospheric structure in a data-sparse basin, especially for winter cold pools and stability transitions.
 
-## Quick links
-- Project home: https://github.com/Bingham-Research-Center/flightdata
-- Data-play notebook: `notebooks/uinta_basin_proof_of_concept.ipynb`
-- Data guide: `DATA_PLAYBOOK.md`
-- Parquet sample snapshot: `example_2026-03-02_60s_core.parquet` + `example_2026-03-02_60s_derived.parquet`
-- Feature roadmap: `DERIVED_FEATURES.md`
-- Units map: `units.md`
+Target users here already know ADS-B and Mode-S mechanics; this README focuses on why the weather use case is different and what to do next.
 
-## Current proof of concept
-- We decode live ADS-B/Mode-S streams from local antenna access (Vernal/KVEL area context).
-- We already extract robust core fields (time, aircraft id, position, motion).
-- We also decode richer Comm-B fields when present (including candidate meteorological/hazard-related channels).
-- We can write compact parquet outputs and quickly inventory field availability.
+## What This Project Has (Now)
 
-This is enough to justify follow-on work: we have real data, real coverage, and real derived-variable opportunities.
+- Live decode pipeline to parquet (`adsbdecoder.py`).
+- Core and derived outputs with stable join keys.
+- In-repo sample files for reproducible collaborator analysis.
+- Notebook for fast field-availability and coverage inspection.
 
-## Data access right now
-- Live raw capture is currently local-network only.
-- The decoder writes:
-  - `adsb_core.parquet`
-  - `adsb_derived.parquet`
-- A compact 60-second real-capture snapshot is also in-repo:
-  - `example_2026-03-02_60s_core.parquet`
-  - `example_2026-03-02_60s_derived.parquet`
+Key in-repo sample snapshot (March 2, 2026, 60s):
 
-## One-command capture length control
-Set capture duration directly:
+- 13,252 rows, 72 aircraft.
+- DF17 only in that sample.
+- Strong high-altitude kinematics.
+- No low-level rows in basin-relevant bands.
+- No observed Comm-B met/hazard yield in that sample.
 
-`python adsbdecoder.py --seconds 60`
+Meaning: pipeline feasibility is demonstrated; low-level cold-pool detection is not yet demonstrated.
 
-Other useful options:
+## Why This Use Case Is Harder Than Typical ADS-B Work
 
-`python adsbdecoder.py --host 129.123.91.145 --port 30005 --seconds 120 --core-out adsb_core.parquet --derived-out adsb_derived.parquet`
+- Atmospheric inference needs low-level vertical sampling, not just traffic presence.
+- Cold-pool diagnosis needs nighttime and terrain-aware coverage.
+- Comm-B met channels can be sparse or absent depending on fleet/region.
+- Geometry matters: one receiver can miss key low-level paths.
 
-## Make a collaborator snapshot
-To package a capture into smaller shareable files (derived output drops raw `msg` by default):
+## Repository Map
 
-`python tools/make_collab_snapshot.py --core-in adsb_core.parquet --derived-in adsb_derived.parquet --prefix example_YYYY-MM-DD_60s`
+- `adsbdecoder.py`: capture + decode entry point.
+- `DERIVED_FEATURES.md`: feature roadmap with evidence-for/evidence-against notes.
+- `units.md`: unit conventions.
+- `DATA_PLAYBOOK.md`: parquet workflow and collaborator data handling.
+- `notebooks/uinta_basin_proof_of_concept.ipynb`: first-pass inventory notebook.
+- `example_2026-03-02_60s_core.parquet`
+- `example_2026-03-02_60s_derived.parquet`
+- `SCIENTIFIC_REVIEW.md`: current viability review and next-batch priorities.
 
-## Notebook workflow
-The notebook (`notebooks/uinta_basin_proof_of_concept.ipynb`) will:
-- Load local real captures when available.
-- Fall back to in-repo sample parquet files when local capture files are absent.
-- Produce plain tables/plots for:
-  - Field availability inventory.
-  - Message-type mix.
-  - Time coverage.
-  - Spatial footprint (coverage cone style view).
-  - Altitude distribution (with caveats about MSL vs AGL interpretation).
+## Quick Start
 
-## Research direction (plain language)
-1. Collect longer and targeted windows to characterize intermittent traffic and data richness.
-2. Prioritize variables that can tighten uncertainty quickly (wind/stability proxies first).
-3. Quantify what is sparse and needs targeted capture.
-4. Build defensible evidence for funding proposals and future publications.
+Environment (mamba preferred):
 
-## UAT and future expansion
-UAT (978 MHz, especially relevant to GA traffic) is a likely near-term expansion.
-We do not claim strong UAT expertise yet; we treat it as a high-value question for aviation collaborators.
-
-Potential strategic extension:
-- Add a second receiver near Roosevelt to improve low-level sampling geometry west of Vernal.
-
-## Open questions for collaborators
-- What capture strategy best represents intermittent KVEL arrivals/departures?
-- Which derived variables are strongest early signals for reviewers?
-- How should we validate low-level profile signals for cold-pool detection?
-- What does UAT likely add in this region and traffic mix?
-- What is the minimum evidence threshold for a preprint and funding case?
-
-## Funding statement (short)
-This project targets a practical gap: extracting atmospheric value from existing aircraft broadcasts in a data-sparse region.
-The immediate ask is support for expanded collection, validation, and targeted hardware/logging improvements that can convert this proof of concept into an operational research product.
-
-## Minimal run commands
-Preferred setup (Miniforge/mamba):
-
-`mamba create -y -n flightdata python=3.11 polars pandas matplotlib pyarrow jupyterlab pymodes`
+`mamba create -y -n flightdata python=3.11 polars pandas matplotlib pyarrow jupyterlab pymodes`  
 `mamba activate flightdata`
 
 Pip fallback:
@@ -96,14 +57,39 @@ Capture:
 
 `python adsbdecoder.py --seconds 60`
 
-Summarize parquet:
+Summarize outputs:
 
-`python tools/summary.py`
+`python tools/summary.py adsb_core.parquet adsb_derived.parquet`
 
-Create compact collaborator snapshot files from a capture:
+Create shareable snapshot:
 
 `python tools/make_collab_snapshot.py --core-in adsb_core.parquet --derived-in adsb_derived.parquet --prefix example_YYYY-MM-DD_60s`
 
-## AI use transparency
-AI is used heavily during prototyping and brainstorming in this phase.
-Scientific interpretation, project direction, and final wording are reviewed by humans and should become increasingly human-led as the project matures.
+Render docs to PDF:
+
+`python tools/render_markdown_pdf.py README.md --out README.pdf`  
+`python tools/render_markdown_pdf.py DERIVED_FEATURES.md --out DERIVED_FEATURES.pdf`
+
+## Collaborator Priorities (Recommended Order)
+
+1. Quantify low-level sufficiency near KVEL (altitude-distance-time bins).
+2. Quantify Comm-B yield over longer windows.
+3. Run targeted arrival/departure and overnight capture windows.
+4. Add terrain-relative altitude proxy and re-evaluate low-level coverage.
+5. Validate one case against independent observations.
+
+## Evidence Guardrails
+
+- Do not claim cold-pool detection from current in-repo sample alone.
+- Treat Comm-B meteorology as measured availability, not assumed availability.
+- Gate feature expansion on coverage sufficiency first.
+
+## Configuration Notes
+
+Receiver defaults are in `adsbdecoder.py` (`host`, `port`, `ref_lat`, `ref_lon`).
+Keep site-specific settings out of shared commits unless needed.
+
+## AI Transparency
+
+AI support is used in prototyping and drafting.
+Scientific interpretation and final project direction are human-reviewed.
